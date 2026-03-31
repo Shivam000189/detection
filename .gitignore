@@ -3,3 +3,14 @@ venv/
 .env
 __pycache__/
 *.pyc
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Model files
+ai-model/models/*
+
+# Data files (optional)
+ai-model/data/*
+

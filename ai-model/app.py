@@ -11,14 +11,16 @@ def predict():
     time = data.get("time")
 
     if not location or not time:
-        return jsonify({"error": "Missing fields"}), 400
+        return jsonify({"error": "Missing required fields: location and time"}), 400
 
     result = predict_crime({
         "location": location,
-        "time": time
+        "time": time,
+        # "victim_age": data.get("victim_age", 0),
+        "victim_gender": data.get("victim_gender", "Unknown"),
+        "weapon_used": data.get("weapon_used", "Unknown"),
+        "crime_domain": data.get("crime_domain", "Unknown"),
+        "police_deployed": data.get("police_deployed", 0)
     })
 
     return jsonify(result)
-
-if __name__ == "__main__":
-    app.run(port=5001, debug=True)

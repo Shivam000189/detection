@@ -9,7 +9,7 @@ __pycache__/
 *.pyc
 
 # Model files
-ai-model/models/*
+ai-model/models/crime_model.pkl
 
 # Data files (optional)
 ai-model/data/*

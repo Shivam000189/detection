@@ -5,6 +5,9 @@ export interface IUser extends Document {
   email: string;
   password: string;
   role: "admin" | "police";
+  lastLogin: Date;
+  isDeleted: Boolean;
+  deletedAt: Date;
 }
 
 const userSchema = new mongoose.Schema<IUser>(
@@ -16,7 +19,14 @@ const userSchema = new mongoose.Schema<IUser>(
       type: String,
       enum: ["admin", "police"],
       default: "police"
-    }
+    },
+    isDeleted: { type: Boolean, default: false },
+    deletedAt: { type: Date, default: null },
+    
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

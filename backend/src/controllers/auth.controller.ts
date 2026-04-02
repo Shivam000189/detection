@@ -41,7 +41,7 @@ export const loginUser = async (req: Request, res: Response) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(404).json({ message: "User not Found" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -50,12 +50,19 @@ export const loginUser = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    const token = generateToken(user._id.toString(), user.role)
     res.json({
-      _id: user._id,
-      name: user.name,
-      role: user.role,
-      token: generateToken(user._id.toString(), user.role)
-    });
+      success:true,
+      token:token,
+      expiresIn:'7d',
+      user:{
+        _id: user._id,
+        name: user.name,
+        role: user.role,
+      }
+      });
+    user.lastLogin = new Date();
+    await user.save();
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
   }
@@ -68,5 +75,125 @@ export const getUsers = async (req: Request, res: Response) => {
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+export const getUser = async function (req, res) {
+    try{
+      const user = await User.findById(req.user.id).select("-password");
+
+      if (!user) {
+          return res.status(404).json({
+            success: false,
+            message: "User not found",
+          });
+        }
+      return res.status(200).json({
+          success: true,
+          data: {
+            userId: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            lastLogin: user.lastLogin,
+          },
+        });
+    }catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Server Error",
+      });
+    }
+}
+
+
+export const getUserById = async function (req, res) {
+    try{
+      const { id } = req.params;
+      
+      const user = await User.findById(id).select("-password");
+
+      if(!User) return res.status(404).json({ success:false, msg:"User not Found"});
+
+      res.status(200).json({
+        success:true,
+        data: user
+      })
+    }catch(error){
+        res.status(500).json({msg:"Server error"})
+    }
+}
+
+
+export const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const allowedUpdates = ["name", "role"];
+    const updates = {};
+
+    for (const key of allowedUpdates) {
+      if (req.body[key] !== undefined) {
+        updates[key] = req.body[key];
+      }
+    }
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User updated",
+      data: user
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+
+export const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (req.user.id === id) {
+        return res.status(400).json({ message: "You cannot delete your own account" });
+      }
+
+    // const user = await User.findByIdAndDelete(id);
+    const user = await User.findByIdAndUpdate(id, { isDeleted: true });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User deleted successfully"
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
 };

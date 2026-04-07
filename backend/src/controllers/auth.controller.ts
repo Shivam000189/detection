@@ -78,7 +78,7 @@ export const getUsers = async (req: Request, res: Response) => {
   }
 };
 
-
+// get me 
 export const getUser = async function (req, res) {
     try{
       const user = await User.findById(req.user.id).select("-password");
@@ -107,7 +107,7 @@ export const getUser = async function (req, res) {
     }
 }
 
-
+// user by Id
 export const getUserById = async function (req, res) {
     try{
       const { id } = req.params;
@@ -125,7 +125,7 @@ export const getUserById = async function (req, res) {
     }
 }
 
-
+// Update User 
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -166,7 +166,7 @@ export const updateUser = async (req, res) => {
   }
 };
 
-
+// delete User by admin
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;

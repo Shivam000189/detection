@@ -1,22 +1,56 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-export const protect = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ success: false, message: 'No token' });
+export interface AuthRequest extends Request {
+  user?: {
+    userId: string;
+    role: 'admin' | 'police' | 'analyst';
+    email: string;
+  };
+}
+
+export const protect = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): void => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({
+      success: false,
+      error: { code: 401, message: 'No token provided' },
+    });
+    return;
+  }
+
+  const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    (req as any).user = decoded;
+    //@ts-ignore
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as AuthRequest['user'];
+    //@ts-ignore
+    req.user = decoded;
     next();
   } catch {
-    return res.status(401).json({ success: false, message: 'Invalid token' });
+    res.status(401).json({
+      success: false,
+      error: { code: 401, message: 'Invalid or expired token' },
+    });
   }
 };
 
 export const authorize = (...roles: string[]) =>
-  (req: Request, res: Response, next: NextFunction) => {
-    if (!roles.includes((req as any).user.role))
-      return res.status(403).json({ success: false, message: 'Forbidden' });
+  (req: AuthRequest, res: Response, next: NextFunction): void => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      res.status(403).json({
+        success: false,
+        error: {
+          code: 403,
+          message: `Role '${req.user?.role}' is not allowed to access this route`,
+        },
+      });
+      return;
+    }
     next();
   };

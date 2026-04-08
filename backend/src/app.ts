@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
-import { preditionCrime } from "./controllers/predict.controller";
+import predictionRoute  from "./routes/predict.routes";
 import cameraRoutes from './routes/camera.routes';
 import { errorHandler } from './middleware/error.middleware';
 
@@ -18,7 +18,7 @@ app.use(express.json());
 
 
 app.use("/api", authRoutes);
-app.use("/api", preditionCrime);
+app.use("/api", predictionRoute);
 
 app.use('/api/v1/cameras', cameraRoutes);
 

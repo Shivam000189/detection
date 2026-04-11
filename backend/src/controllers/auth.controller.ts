@@ -83,7 +83,7 @@ export const getUsers = async (req: Request, res: Response) => {
 // get me 
 export const getUser = async function (req, res) {
     try{
-      const user = await User.findById(req.user.id).select("-password");
+      const user = await User.findById(req.user.userId).select("-password");
 
       if (!user) {
           return res.status(404).json({
@@ -173,7 +173,7 @@ export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    if (req.user.id === id) {
+    if (req.user.userId === id) {
         return res.status(400).json({ message: "You cannot delete your own account" });
       }
 

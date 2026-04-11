@@ -10,6 +10,9 @@ import {
   createManualCrime,
   saveCrime,
   deleteCrime,
+    getCrimeHotspots,
+    getCrimeTrends,
+    getCrimeAreaRisk,
 } from '../controllers/crime.controller';
 
 // ── Multer config for video uploads ──────────────────
@@ -55,6 +58,15 @@ router.post(
   authorize('admin', 'police'),
   createManualCrime
 );
+
+router.get('/hotspots', protect, getCrimeHotspots);
+router.get('/trends',   protect, getCrimeTrends);
+router.get('/hotspots', protect, getCrimeHotspots);
+
+
+router.get('/area-risk', protect, getCrimeAreaRisk);
+router.get('/trends',    protect, getCrimeTrends);
+router.get('/hotspots',  protect, getCrimeHotspots);
 
 // Save / unsave as case
 router.patch('/:id/save',   protect, authorize('admin', 'police'), saveCrime);

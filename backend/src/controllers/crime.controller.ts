@@ -4,7 +4,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { AppError } from '../middleware/error.middleware';
 import CrimeEvent from '../models/crime.model';
 import Camera from '../models/camera.model';
-import { predictCrime, runVideoDetection } from '../services/aiModel.service';
+import { predictCrime, runVideoDetection, predictHotspots, analyzeTrends, getAreaRisk } from '../services/aiModel.service';
 import { createAlertForCrime } from '../services/alert.service';
 
 const getSeverityFromScore = (score: number): 'low' | 'medium' | 'high' => {
@@ -315,6 +315,89 @@ export const deleteCrime = async (
 
 
     res.status(200).json({ success: true, message: `Crime deleted` });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// crime/hotspots?city=Mathura?topN=5
+export const getCrimeHotspots = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const city  = req.query.city  as string | undefined;
+    const topN  = req.query.topN  ? parseInt(req.query.topN as string) : 5;
+
+    // ── Call Python /predict-hotspot ──────────────────────────────
+    const result = await predictHotspots({ city:city as string , topN });
+
+    res.status(200).json({
+      success: true,
+      data:    result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+// ── ADD controller ────────────────────────────────────────────────
+// GET /crimes/trends?groupBy=month&city=Mathura&crimeType=theft
+export const getCrimeTrends = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const {
+      groupBy,
+      city,
+      crimeType,
+      startDate,
+      endDate,
+    } = req.query;
+
+    const result = await analyzeTrends({
+      groupBy:   groupBy   as string,
+      city:      city      as string,
+      crimeType: crimeType as string,
+      startDate: startDate as string,
+      endDate:   endDate   as string,
+    });
+
+    res.status(200).json({
+      success: true,
+      data:    result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const getCrimeAreaRisk = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { city, timeOfDay } = req.query;
+
+    if (!city) {
+      return next(new AppError('city query param is required', 400));
+    }
+
+    const result = await getAreaRisk({
+      city:       city      as string,
+      timeOfDay:  timeOfDay as string,
+    });
+
+    res.status(200).json({
+      success: true,
+      data:    result,
+    });
   } catch (error) {
     next(error);
   }

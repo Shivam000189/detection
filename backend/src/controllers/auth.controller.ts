@@ -7,10 +7,15 @@ import { generateToken } from "../utils/generateToken";
 export const registerUser = async (req: Request, res: Response) => {
   try {
     const { name, email, password, role } = req.body;
+    
 
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
+    }
+
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -30,7 +35,7 @@ export const registerUser = async (req: Request, res: Response) => {
       token: generateToken(user._id.toString(), user.role)
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({ message: "Server Error"});
   }
 };
 

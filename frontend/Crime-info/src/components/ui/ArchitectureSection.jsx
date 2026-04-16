@@ -21,9 +21,16 @@ function ArchitectureSection() {
             <TorusScene />
           </div>
           <div className="text-center md:text-left">
-            <span className="font-mono font-bold tracking-wider text-3xl md:text-4xl text-white">CodeGenie</span>
-            <p className="mt-2 text-purple-400 font-medium">Magic contract creation</p>
-            <p className="mt-4 text-gray-400 text-sm leading-relaxed max-w-md">CodeGenie lets you write full Solana smart contracts using plain English. It automatically generates complete Anchor programs with all instructions, accounts, and serialization logic.</p>
+            <span className="font-mono font-bold tracking-wider text-3xl md:text-4xl text-white">
+                AI Engine
+              </span>
+              <p className="mt-2 text-purple-400 font-medium">
+                Crime Detection & Prediction
+              </p>
+              <p className="mt-4 text-gray-400 text-sm leading-relaxed max-w-md">
+                Our AI model analyzes video frames and structured data to detect violence,
+                predict crime risk, and generate intelligent summaries using machine learning.
+              </p>
           </div>
         </div>
 
@@ -39,12 +46,19 @@ function ArchitectureSection() {
             </div>
           </div>
           <div className="text-center md:text-right">
-            <span className="font-mono font-bold tracking-wider text-3xl md:text-4xl text-white">EditWizard</span>
-            <div className="mt-2 flex items-center justify-center md:justify-end gap-2">
-              <span className="text-purple-400 font-medium">Instant tweaks</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">upcoming</span>
+            <span className="font-mono font-bold tracking-wider text-3xl md:text-4xl text-white">
+              Smart Dashboard
+            </span>
+            <div className="mt-2 flex items-center justify-center md:justify-start gap-2">
+              <span className="text-purple-400 font-medium">
+                Monitoring & Analytics
+              </span>
             </div>
-            <p className="mt-4 text-gray-400 text-sm leading-relaxed max-w-md ml-auto">EditWizard allows you to easily modify existing smart contracts through chat or direct code edits.</p>
+            <p className="mt-4 text-gray-400 text-sm leading-relaxed max-w-md">
+              A modern dashboard to monitor cameras, visualize crime trends,
+              manage alerts, and gain insights through AI-powered analytics.
+            </p>
+            {/* <p className="mt-4 text-gray-400 text-sm leading-relaxed max-w-md ml-auto">EditWizard allows you to easily modify existing smart contracts through chat or direct code edits.</p> */}
           </div>
         </div>
 
@@ -60,12 +74,18 @@ function ArchitectureSection() {
             </div>
           </div>
           <div className="text-center md:text-left">
-            <span className="font-mono font-bold tracking-wider text-3xl md:text-4xl text-white">DeployBot</span>
+            <span className="font-mono font-bold tracking-wider text-3xl md:text-4xl text-white">
+              Smart Dashboard
+            </span>
             <div className="mt-2 flex items-center justify-center md:justify-start gap-2">
-              <span className="text-purple-400 font-medium">One-click launch</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">upcoming</span>
+              <span className="text-purple-400 font-medium">
+                Monitoring & Analytics
+              </span>
             </div>
-            <p className="mt-4 text-gray-400 text-sm leading-relaxed max-w-md">DeployBot simplifies deploying and interacting with your Solana programs. With a single click, it compiles, deploys, and generates IDLs.</p>
+            <p className="mt-4 text-gray-400 text-sm leading-relaxed max-w-md">
+              A modern dashboard to monitor cameras, visualize crime trends,
+              manage alerts, and gain insights through AI-powered analytics.
+            </p>
           </div>
         </div>
       </motion.div>

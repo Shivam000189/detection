@@ -26,11 +26,65 @@ function FeaturesSection() {
 
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="flex flex-wrap md:flex-nowrap justify-center gap-4 md:gap-6">
-          <FeatureCard badge="AI-POWERED" badgeColor="text-red-600 bg-red-50 border-red-100" dotColor="bg-red-500" iconBg="from-red-500/10 to-red-600/5" icon={<RustIcon />} title="Pattern Analysis" desc="Generate production-ready detection models from natural language" footer="Rust & Anchor" delay={0} />
-          <FeatureCard badge="INSTANT" badgeColor="text-yellow-600 bg-yellow-50 border-yellow-100" dotColor="bg-yellow-500" iconBg="from-yellow-500/10 to-yellow-600/5" icon={<BoltIcon />} title="Deploy" desc="Deploy to Devnet, Testnet, or Mainnet instantly" footer="One-Click" delay={0.1} />
-          <FeatureCard badge="COMPLETE" badgeColor="text-purple-600 bg-purple-50 border-purple-100" dotColor="bg-purple-500" iconBg="from-purple-500/10 to-purple-600/5" icon={<WinterIcon />} title="CRIMEAI" desc="From model to client SDK to frontend boilerplate" footer="Full Stack" delay={0.2} />
-          <FeatureCard badge="NEURAL" badgeColor="text-blue-600 bg-blue-50 border-blue-100" dotColor="bg-blue-500" iconBg="from-blue-500/10 to-blue-600/5" icon={<AnchorIcon />} title="Framework" desc="Built-in security checks and neural network conventions" footer="Best Practices" delay={0.3} />
-          <FeatureCard badge="SECURE" badgeColor="text-emerald-600 bg-emerald-50 border-emerald-100" dotColor="bg-emerald-500" iconBg="from-emerald-500/10 to-emerald-600/5" icon={<ShieldIcon />} title="Security" desc="Automated vulnerability detection and fixes" footer="AI Audits" delay={0.4} />
+          <FeatureCard
+            badge="REAL-TIME"
+            badgeColor="text-red-600 bg-red-50 border-red-100"
+            dotColor="bg-red-500"
+            iconBg="from-red-500/10 to-red-600/5"
+            icon={<RustIcon />}
+            title="Live Detection"
+            desc="Detect violence and suspicious activity from live camera feeds using AI"
+            footer="WebSocket + AI"
+            delay={0}
+          />
+
+          <FeatureCard
+            badge="ALERT SYSTEM"
+            badgeColor="text-yellow-600 bg-yellow-50 border-yellow-100"
+            dotColor="bg-yellow-500"
+            iconBg="from-yellow-500/10 to-yellow-600/5"
+            icon={<BoltIcon />}
+            title="Instant Alerts"
+            desc="Automatically trigger alerts with severity levels when crime is detected"
+            footer="Real-time"
+            delay={0.1}
+          />
+
+          <FeatureCard
+            badge="PREDICTION"
+            badgeColor="text-purple-600 bg-purple-50 border-purple-100"
+            dotColor="bg-purple-500"
+            iconBg="from-purple-500/10 to-purple-600/5"
+            icon={<WinterIcon />}
+            title="Crime Prediction"
+            desc="Predict future crimes based on location, time, and historical patterns"
+            footer="ML Model"
+            delay={0.2}
+          />
+
+          <FeatureCard
+            badge="ANALYTICS"
+            badgeColor="text-blue-600 bg-blue-50 border-blue-100"
+            dotColor="bg-blue-500"
+            iconBg="from-blue-500/10 to-blue-600/5"
+            icon={<AnchorIcon />}
+            title="Hotspot Analysis"
+            desc="Identify high-risk areas and peak crime times using AI insights"
+            footer="AI Trends"
+            delay={0.3}
+          />
+
+          <FeatureCard
+            badge="DASHBOARD"
+            badgeColor="text-emerald-600 bg-emerald-50 border-emerald-100"
+            dotColor="bg-emerald-500"
+            iconBg="from-emerald-500/10 to-emerald-600/5"
+            icon={<ShieldIcon />}
+            title="Smart Dashboard"
+            desc="Monitor cameras, alerts, and crime analytics in one unified interface"
+            footer="Full Stack"
+            delay={0.4}
+          />
         </div>
       </div>
     </section>

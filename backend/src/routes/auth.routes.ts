@@ -16,7 +16,7 @@ const router = express.Router();
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.get("/users", protect, authorizeRoles("admin"), getUsers);
-router.get("/auth/me", protect, getUser);
+router.get("/me", protect, getUser);
 router.get('/users/:id', protect, authorizeRoles("admin"), getUserById);
 router.patch('/user/:id', protect, authorizeRoles("admin"), updateUser);
 

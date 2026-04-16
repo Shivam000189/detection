@@ -15,9 +15,9 @@ function TestimonialsSection() {
 
         <div className="grid md:grid-cols-3 gap-6">
           {[                                                            
-            { name: "Sarah K.", role: "Student", text: "Find crime hotspot in copuls of second. Good for human" },
-            { name: "Marcus T.", role: "Student", text: "The AI tell 3 Crime Which happend near to me. Absolutely incredible." },
-            { name: "Elena R.", role: "Student", text: "Reduced our contract development time by 80%. Game changer for our team." },
+            { name: "Abhishek.", role: "Student", text: "Find crime hotspot in copuls of second. Good for human" },
+            { name: "Siddharth", role: "Student", text: "The AI tell 3 Crime Which happend near to me. Absolutely incredible." },
+            { name: "Shivam", role: "Student", text: "Reduced our contract development time by 80%. Game changer for our team." },
           ].map((t, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }} className="p-6 rounded-xl bg-white/[0.03] border border-white/5 hover:border-purple-500/20 transition-colors">
               <div className="flex gap-1 mb-4">

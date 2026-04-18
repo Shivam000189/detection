@@ -1,6 +1,8 @@
 flask
+flask-cors
 pandas
 scikit-learn
 google-generativeai
 python-dotenv
 requests
+gunicorn

@@ -1,0 +1,4 @@
+# Procfile — used by Railway and Render for the AI model service
+# Railway/Render will run this command to start your service
+
+web: python generate_dataset.py && python train.py && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120

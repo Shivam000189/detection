@@ -4,6 +4,9 @@ import Alert from "../models/alert.model";
 import Camera from "../models/camera.model";
 import { v4 as uuidv4 } from "uuid";
 
+// ✅ Use env variable — no more hardcoded localhost
+const AI_URL = process.env.AI_MODEL_URL || "http://localhost:5001";
+
 const lastAlertTime: Record<string, number> = {};
 
 export const setupSocket = (io: Server) => {
@@ -12,18 +15,18 @@ export const setupSocket = (io: Server) => {
 
     socket.on("frame", async ({ image, cameraId }) => {
       try {
-        const res = await axios.post("http://localhost:5001/detect", {
+        const res = await axios.post(`${AI_URL}/detect`, {
           image,
         });
 
         const result = res.data;
 
-        // 🔒 Ignore low confidence
+        // Ignore low confidence
         if (!result.violence || result.confidence < 0.6) {
           return;
         }
 
-        // 🔒 Prevent spam (1 alert per 10 sec per camera)
+        // Prevent spam — 1 alert per 10 seconds per camera
         const now = Date.now();
         if (
           lastAlertTime[cameraId] &&
@@ -33,7 +36,7 @@ export const setupSocket = (io: Server) => {
         }
         lastAlertTime[cameraId] = now;
 
-        // 📍 Get camera info
+        // Get camera location
         const camera = await Camera.findOne({ cameraId });
 
         const severity =
@@ -44,25 +47,29 @@ export const setupSocket = (io: Server) => {
             : "low";
 
         const alert = await Alert.create({
-          alertId: uuidv4(),
-          crimeId: uuidv4(),
+          alertId: `alt_${uuidv4().split("-")[0]}`,
+          crimeId: `crm_${uuidv4().split("-")[0]}`,
           cameraId,
           location: camera?.location || "Unknown",
           crimeType: "violence",
           severity,
-          message: `Violence detected at ${camera?.location}`,
+          message: `Violence detected at ${camera?.location || "Unknown"}`,
           sentVia: ["websocket"],
         });
 
-        // 🔥 BROADCAST TO ALL CLIENTS
+        // Broadcast to all connected clients
         io.emit("new-alert", alert);
 
-        // 🎯 Send detection back to sender
+        // Send detection result back to sender
         socket.emit("detection", result);
 
-      } catch (err) {
-        console.error("Socket error:", err);
+      } catch (err: any) {
+        console.error("Socket frame processing error:", err?.message || err);
       }
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Client disconnected:", socket.id);
     });
   });
 };

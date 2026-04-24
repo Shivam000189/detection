@@ -1,10 +1,9 @@
 flask
 flask-cors
 pandas
-scikit-learn
-google-generativeai
+scikit-learn==1.7.0
 python-dotenv
 requests
 gunicorn
-streamlit
 joblib
+google-generativeai

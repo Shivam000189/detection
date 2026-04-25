@@ -1,111 +1,53 @@
-import { Response, NextFunction } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { AuthRequest } from '../middleware/auth.middleware';
-import { AppError } from '../middleware/error.middleware';
-import CrimeEvent from '../models/crime.model';
-import Camera from '../models/camera.model';
-import { predictCrime, runVideoDetection, predictHotspots, analyzeTrends, getAreaRisk } from '../services/aiModel.service';
-import { createAlertForCrime } from '../services/alert.service';
+import { Response, NextFunction } from "express";
+import { v4 as uuidv4 } from "uuid";
+import { AuthRequest } from "../middleware/auth.middleware";
+import { AppError } from "../middleware/error.middleware";
+import CrimeEvent from "../models/crime.model";
+import Camera from "../models/camera.model";
+import {
+  runVideoDetection,
+  predictHotspots,
+  analyzeTrends,
+  getAreaRisk,
+} from "../services/aiModel.service";
+import { createAlertForCrime } from "../services/alert.service";
+import { saveDetectedCrimes } from "../services/crime.service";
 
-const getSeverityFromScore = (score: number): 'low' | 'medium' | 'high' => {
-  if (score >= 0.85) return 'high';
-  if (score >= 0.60) return 'medium';
-  return 'low';
-};
-
-// GET /crimes 
+// ─────────────────────────────
+// GET ALL CRIMES
+// ─────────────────────────────
 export const getAllCrimes = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const {
-      page = '1', limit = '20',
-      crimeType, severity, cameraId,
-      location, isSaved, startDate, endDate,
-      sortBy = 'createdAt', order = 'desc',
-    } = req.query;
+    const page = parseInt((req.query.page as string) || "1");
+    const limit = parseInt((req.query.limit as string) || "20");
 
-    const filter: Record<string, any> = {};
-    if (crimeType)  filter.crimeType = crimeType;
-    if (severity)   filter.severity = severity;
-    if (cameraId)   filter.cameraId = cameraId;
-    if (isSaved !== undefined) filter.isSaved = isSaved === 'true';
-    if (location)   filter.location = { $regex: location, $options: 'i' };
-    if (startDate || endDate) {
-      filter.date = {};
-      if (startDate) filter.date.$gte = startDate;
-      if (endDate)   filter.date.$lte = endDate;
-    }
-
-    const pageNum  = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip     = (pageNum - 1) * limitNum;
+    const skip = (page - 1) * limit;
 
     const [crimes, total] = await Promise.all([
-      CrimeEvent.find(filter)
-        .sort({ [sortBy as string]: order === 'asc' ? 1 : -1 })
-        .skip(skip)
-        .limit(limitNum),
-      CrimeEvent.countDocuments(filter),
+      CrimeEvent.find().skip(skip).limit(limit).sort({ createdAt: -1 }),
+      CrimeEvent.countDocuments(),
     ]);
 
     res.status(200).json({
       success: true,
       total,
-      page: pageNum,
-      totalPages: Math.ceil(total / limitNum),
+      page,
+      totalPages: Math.ceil(total / limit),
       data: crimes,
     });
+    return;
   } catch (error) {
     next(error);
   }
 };
 
-// GET /crimes/stats
-export const getCrimeStats = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const today = new Date().toISOString().split('T')[0] as string;
-
-    const [total, todayCount, bySeverity, byType, saved] = await Promise.all([
-      CrimeEvent.countDocuments(),
-      CrimeEvent.countDocuments({ date: today }),
-      CrimeEvent.aggregate([{ $group: { _id: '$severity', count: { $sum: 1 } } }]),
-      CrimeEvent.aggregate([{ $group: { _id: '$crimeType', count: { $sum: 1 } } }]),
-      CrimeEvent.countDocuments({ isSaved: true }),
-    ]);
-
-    const severityMap: Record<string, number> = {};
-    bySeverity.forEach((s) => (severityMap[s._id] = s.count));
-
-    const typeMap: Record<string, number> = {};
-    byType.forEach((t) => (typeMap[t._id] = t.count));
-
-    res.status(200).json({
-      success: true,
-      data: {
-        totalCrimes: total,
-        todayCrimes: todayCount,
-        savedCases: saved,
-        bySeverity: {
-          low:    severityMap['low']    || 0,
-          medium: severityMap['medium'] || 0,
-          high:   severityMap['high']   || 0,
-        },
-        byType: typeMap,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ─── GET /crimes/:id
+// ─────────────────────────────
+// GET CRIME BY ID
+// ─────────────────────────────
 export const getCrimeById = async (
   req: AuthRequest,
   res: Response,
@@ -113,15 +55,26 @@ export const getCrimeById = async (
 ): Promise<void> => {
   try {
     const crimeId = req.params.id as string;
+
     const crime = await CrimeEvent.findOne({ crimeId });
-    if (!crime) return next(new AppError(`Crime '${req.params.id}' not found`, 404));
-    res.status(200).json({ success: true, data: crime });
+
+    if (!crime) {
+      return next(new AppError("Crime not found", 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      data: crime,
+    });
+    return;
   } catch (error) {
     next(error);
   }
 };
 
-// ─── POST /crimes/detect (video upload)
+// ─────────────────────────────
+// DETECT CRIME
+// ─────────────────────────────
 export const detectCrime = async (
   req: AuthRequest,
   res: Response,
@@ -129,190 +82,116 @@ export const detectCrime = async (
 ): Promise<void> => {
   try {
     const { cameraId, location } = req.body;
-    const  file  = req.file;
-    console.log("BODY:", req.body);
-    console.log("FILE:", req.file);
+    const file = req.file;
+
+    if (!cameraId || !location) {
+      return next(new AppError("cameraId and location required", 400));
+    }
+
+    if (!file) {
+      return next(new AppError("Video file is required", 400));
+    }
 
     const camera = await Camera.findOne({ cameraId });
-    if (!camera) return next(new AppError(`Camera '${cameraId}' not found`, 404));
-    if (!file)   return next(new AppError('Video file is required', 400));
+    if (!camera) {
+      return next(new AppError("Camera not found", 404));
+    }
 
-    const today   = new Date();
-    const dateStr = today.toISOString().split('T')[0];
-    const timeStr = today.toTimeString().split(' ')[0];
+    const detectedEvents = await runVideoDetection(
+      file.path,
+      cameraId,
+      location
+    );
 
-    // ── Call Python AI model
-    const detectedEvents = await runVideoDetection(file.path, cameraId, location);
-
-    if (detectedEvents.length === 0) {
+    if (!detectedEvents || detectedEvents.length === 0) {
       res.status(200).json({
         success: true,
-        message: 'No criminal activity detected',
-        detectedEvents: [],
+        message: "No criminal activity detected",
         totalDetected: 0,
+        detectedEvents: [],
       });
       return;
     }
 
-    // Save each event returned from Python
-    const savedCrimes = await Promise.all(
-      detectedEvents.map(async (event) => {
-        return CrimeEvent.create({
-          crimeId:         `crm_${uuidv4().split('-')[0]}`,
-          cameraId,
-          location,
-          crimeType:       event.crimeType,
-          severity:        event.severity || getSeverityFromScore(event.confidenceScore),
-          confidenceScore: event.confidenceScore,
-          date:            dateStr,
-          time:            event.timestampInVideo || timeStr,
-          videoClipUrl:    `/uploads/videos/${file.filename}`,
-          thumbnailUrl:    event.thumbnailUrl,
-          aiSummary:       event.aiSummary,        // ← came from Python/Gemini
-          recommendation:  event.recommendation,   // ← came from Python
-          tags: [event.crimeType, 'auto-detected', location.split(',')[0].trim()],
-        } as any);
-      })
-    );
+    // normalize severity (important for TS)
+    const normalizedEvents = detectedEvents.map((event: any) => ({
+      ...event,
+      severity:
+        event.severity === "high"
+          ? "high"
+          : event.severity === "medium"
+          ? "medium"
+          : "low",
+    }));
 
-    // Update camera lastActive
-    await Camera.findOneAndUpdate({ cameraId }, { lastActive: new Date() });
+    const savedCrimes = await saveDetectedCrimes(
+      normalizedEvents,
+      cameraId,
+      location,
+      file
+    );
 
     res.status(200).json({
       success: true,
-      message: 'Detection complete',
+      message: "Detection complete",
       totalDetected: savedCrimes.length,
       detectedEvents: savedCrimes,
     });
+    return;
   } catch (error) {
     next(error);
   }
 };
 
-//  POST /crimes/predict 
-// Predict crime risk for a location+time without a video
-export const predictCrimeRisk = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const {
-      location, time,
-      victim_age, victim_gender,
-      weapon_used, crime_domain, police_deployed,
-    } = req.body;
-
-    if (!location || !time) {
-      return next(new AppError('location and time are required', 400));
-    }
-
-    // ── Call your Python /predict-crime endpoint
-    const result = await predictCrime({
-      location, time,
-      victim_age, victim_gender,
-      weapon_used, crime_domain, police_deployed,
-    });
-
-    res.status(200).json({
-      success: true,
-      data: result,
-      // result already has: predicted_crime, probability,
-      // risk_level, recommendation, input_summary
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// ─── POST /crimes/manual 
+// ─────────────────────────────
+// MANUAL CRIME
+// ─────────────────────────────
 export const createManualCrime = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const {
-      cameraId, location, crimeType,
-      severity, date, time, description,
-    } = req.body;
+    const { cameraId, location, crimeType, severity } = req.body;
 
-    let camera = await Camera.findOne({ cameraId });
-
-      // ✅ Auto-create camera if not exists
-      if (!camera) {
-        camera = await Camera.create({
-          cameraId: cameraId || "CAM_DEFAULT",
-          location: location || "Unknown",
-          ipAddress: "0.0.0.0",
-          installationDate: new Date(),
-        });
-      }
+    if (!cameraId || !location || !crimeType || !severity) {
+      return next(new AppError("Missing required fields", 400));
+    }
 
     const crime = await CrimeEvent.create({
-      crimeId:     `crm_${uuidv4().split('-')[0]}`,
+      crimeId: `crm_${uuidv4().split("-")[0]}`,
       cameraId,
       location,
       crimeType,
       severity,
-      confidenceScore: 1.0,
-      date,
-      time,
-      aiSummary:   description,
-      tags:        [crimeType, severity, 'manual-entry'],
-    });
-
+      confidenceScore: 1,
+      date: new Date().toISOString().split("T")[0] as string,
+      time: new Date().toTimeString().split(" ")[0] as string,
+      tags: [crimeType, "manual"],
+    } as any);
 
     await createAlertForCrime({
-        crimeId: crime.crimeId,
-        cameraId: crime.cameraId,
-        location: crime.location,
-        crimeType: crime.crimeType,
-        severity: crime.severity,
-        ...(crime.aiSummary && { aiSummary: crime.aiSummary }),
-        });
+      crimeId: crime.crimeId,
+      cameraId,
+      location,
+      crimeType,
+      severity,
+    });
 
     res.status(201).json({
       success: true,
-      message: 'Crime logged manually',
+      message: "Crime created",
       data: crime,
     });
-  } catch (error: any) {
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map((e: any) => e.message);
-      return next(new AppError(messages.join(', '), 400));
-    }
-    next(error);
-  }
-};
-
-// ─── PATCH /crimes/:id/save
-export const saveCrime = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const { remarks, tags } = req.body;
-    const crimeId = req.params.id as string;
-    const crime = await CrimeEvent.findOneAndUpdate(
-      { crimeId },
-      {
-        isSaved:      true,
-        savedBy:      req.user?.userId,
-        savedRemarks: remarks,
-        ...(tags && { $addToSet: { tags: { $each: tags } } }),
-      },
-      { new: true }
-    );
-    if (!crime) return next(new AppError(`Crime '${req.params.id}' not found`, 404));
-    res.status(200).json({ success: true, message: 'Saved as case', data: crime });
+    return;
   } catch (error) {
     next(error);
   }
 };
 
-// ─── DELETE /crimes/:id 
+// ─────────────────────────────
+// DELETE CRIME
+// ─────────────────────────────
 export const deleteCrime = async (
   req: AuthRequest,
   res: Response,
@@ -320,97 +199,70 @@ export const deleteCrime = async (
 ): Promise<void> => {
   try {
     const crimeId = req.params.id as string;
+
     const crime = await CrimeEvent.findOneAndDelete({ crimeId });
-    if (!crime) return next(new AppError(`Crime '${req.params.id}' not found`, 404));
 
+    if (!crime) {
+      return next(new AppError("Crime not found", 404));
+    }
 
-
-    res.status(200).json({ success: true, message: `Crime deleted` });
+    res.status(200).json({
+      success: true,
+      message: "Crime deleted",
+    });
+    return;
   } catch (error) {
     next(error);
   }
 };
 
-// crime/hotspots?city=Mathura?topN=5
+// ─────────────────────────────
+// AI ROUTES
+// ─────────────────────────────
+
 export const getCrimeHotspots = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-): Promise<void> => {
+) => {
   try {
-    console.log("🔥 AI URL:", process.env.AI_MODEL_URL);
-    const city  = req.query.city  as string | undefined;
-    const topN  = req.query.topN  ? parseInt(req.query.topN as string) : 5;
-
-    // ── Call Python /predict-hotspot ──────────────────────────────
-    const result = await predictHotspots({ city:city as string , topN });
-
-    res.status(200).json({
-      success: true,
-      data:    result,
+    const result = await predictHotspots({
+      city: req.query.city as string,
     });
+
+    res.json({ success: true, data: result });
   } catch (error) {
     next(error);
   }
 };
 
-
-// ── ADD controller ────────────────────────────────────────────────
-// GET /crimes/trends?groupBy=month&city=Mathura&crimeType=theft
 export const getCrimeTrends = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-): Promise<void> => {
+) => {
   try {
-    const {
-      groupBy,
-      city,
-      crimeType,
-      startDate,
-      endDate,
-    } = req.query;
-    
-
     const result = await analyzeTrends({
-      groupBy:   groupBy   as string,
-      city:      city      as string,
-      crimeType: crimeType as string,
-      startDate: startDate as string,
-      endDate:   endDate   as string,
+      city: req.query.city as string,
     });
 
-    res.status(200).json({
-      success: true,
-      data:    result,
-    });
+    res.json({ success: true, data: result });
   } catch (error) {
     next(error);
   }
 };
-
 
 export const getCrimeAreaRisk = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-): Promise<void> => {
+) => {
   try {
-    const { city, timeOfDay } = req.query;
-
-    if (!city) {
-      return next(new AppError('city query param is required', 400));
-    }
-
     const result = await getAreaRisk({
-      city:       city      as string,
-      timeOfDay:  timeOfDay as string,
+      city: req.query.city as string,
     });
 
-    res.status(200).json({
-      success: true,
-      data:    result,
-    });
+    res.json({ success: true, data: result });
   } catch (error) {
     next(error);
   }

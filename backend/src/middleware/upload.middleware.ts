@@ -1,19 +1,16 @@
-import multer from 'multer';
-import path from 'path';
+import multer from "multer";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import cloudinary from "../config/cloudinary";
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/videos/'),
-  filename: (req, file, cb) =>
-    cb(null, `vid_${Date.now()}${path.extname(file.originalname)}`)
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "crime-videos",
+    resource_type: "video",
+  } as any,
 });
 
 export const uploadVideo = multer({
   storage,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
-  fileFilter: (req, file, cb) => {
-    const allowed = ['.mp4', '.avi', '.mkv'];
-    allowed.includes(path.extname(file.originalname))
-      ? cb(null, true)
-      : cb(new Error('Invalid file type'));
-  }
+  limits: { fileSize: 200 * 1024 * 1024 },
 });

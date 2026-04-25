@@ -1,14 +1,11 @@
 import { Router } from 'express';
-import multer from 'multer';
-import path from 'path';
 import { protect, authorize } from '../middleware/auth.middleware';
+import { uploadVideo } from "../middleware/upload.middleware";
 import {
   getAllCrimes,
-  getCrimeStats,
   getCrimeById,
   detectCrime,
   createManualCrime,
-  saveCrime,
   deleteCrime,
     getCrimeHotspots,
     getCrimeTrends,
@@ -16,29 +13,13 @@ import {
 } from '../controllers/crime.controller';
 
 // ── Multer config for video uploads ──────────────────
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/videos/'),
-  filename: (req, file, cb) =>
-    cb(null, `vid_${Date.now()}${path.extname(file.originalname)}`),
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
-  fileFilter: (req, file, cb) => {
-    const allowed = ['.mp4', '.avi', '.mkv', '.mov'];
-    allowed.includes(path.extname(file.originalname).toLowerCase())
-      ? cb(null, true)
-      : cb(new Error('Only video files allowed: mp4, avi, mkv, mov'));
-  },
-});
 
 const router = Router();
 
 // ── All specific named routes FIRST ────────────────
 
 // Stats
-router.get('/stats', protect, getCrimeStats);
+// router.get('/stats', protect, getCrimeStats);
 
 // AI analysis routes
 router.get('/hotspots', protect, getCrimeHotspots);
@@ -47,10 +28,10 @@ router.get('/area-risk', protect, getCrimeAreaRisk);
 
 // Detection & manual entry
 router.post(
-  '/detect',
+  "/detect",
   protect,
-  authorize('admin', 'police'),
-  upload.single('video'),
+  authorize("admin", "police"),
+  uploadVideo.single("video"), // ✅ use shared middleware
   detectCrime
 );
 
@@ -66,7 +47,7 @@ router.get('/', protect, getAllCrimes);
 router.get('/:id', protect, getCrimeById); // ✅ now safe
 
 // ── Sub-resource routes ────────────────────────────
-router.patch('/:id/save', protect, authorize('admin', 'police'), saveCrime);
+// router.patch('/:id/save', protect, authorize('admin', 'police'), saveCrime);
 router.delete('/:id', protect, authorize('admin'), deleteCrime);
 
 

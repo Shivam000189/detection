@@ -1,4 +1,6 @@
 import express from "express";
+import { validate } from "../validators/validate.middleware";
+import { registerSchema, loginSchema } from "../validators/auth.validator";
 import {
   registerUser,
   loginUser,
@@ -8,16 +10,19 @@ import {
   updateUser,
   deleteUser
 } from "../controllers/auth.controller";
-import { protect } from "../middleware/auth.middleware";
-import { authorizeRoles } from "../middleware/role.middleware";
+import { protect, authorize } from "../middleware/auth.middleware";
 
 const router = express.Router();
 
-router.post("/register", registerUser);
-router.post("/login", loginUser);
-router.get("/users", protect, authorizeRoles("admin"), getUsers);
+// AUTH
+router.post("/register", validate(registerSchema), registerUser);
+router.post("/login", validate(loginSchema), loginUser);
 router.get("/me", protect, getUser);
-router.get('/users/:id', protect, authorizeRoles("admin"), getUserById);
-router.patch('/user/:id', protect, authorizeRoles("admin"), updateUser);
+
+// ADMIN USERS
+router.get("/users", protect, authorize("admin"), getUsers);
+router.get("/users/:id", protect, authorize("admin"), getUserById);
+router.patch("/users/:id", protect, authorize("admin"), updateUser);
+router.delete("/users/:id", protect, authorize("admin"), deleteUser);
 
 export default router;

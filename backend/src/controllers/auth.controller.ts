@@ -1,21 +1,30 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import User from "../models/user.model";
 import { generateToken } from "../utils/generateToken";
+import { AppError } from "../middleware/error.middleware";
 
-// Register
-export const registerUser = async (req: Request, res: Response) => {
+// REGISTER
+export const registerUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { name, email, password, role } = req.body;
-    
+
+    // ✅ Basic validation
+    if (!name || !email || !password) {
+      return next(new AppError("All fields are required", 400));
+    }
+
+    if (password.length < 6) {
+      return next(new AppError("Password must be at least 6 characters", 400));
+    }
 
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: "User already exists" });
-    }
-
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+      return next(new AppError("User already exists", 400));
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -24,121 +33,147 @@ export const registerUser = async (req: Request, res: Response) => {
       name,
       email,
       password: hashedPassword,
-      role
+      role,
     });
 
+    const token = generateToken(
+      user._id.toString(),
+      user.role,
+      user.email
+    );
+
     res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      token: generateToken(user._id.toString(), user.role)
+      success: true,
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        token,
+      },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error"});
+    next(error);
   }
 };
 
-// Login
-export const loginUser = async (req: Request, res: Response) => {
+// LOGIN
+export const loginUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { email, password } = req.body;
 
+    if (!email || !password) {
+      return next(new AppError("Email and password are required", 400));
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User not Found" });
+      return next(new AppError("Invalid credentials", 401));
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return next(new AppError("Invalid credentials", 401));
     }
 
     user.lastLogin = new Date();
     await user.save();
 
-    const token = generateToken(user._id.toString(), user.role)
-    res.json({
-      success:true,
-      token:token,
-      expiresIn:'7d',
-      user:{
-        _id: user._id,
-        name: user.name,
-        role: user.role,
-      }
-      });
-    
+    const token = generateToken(
+      user._id.toString(),
+      user.role,
+      user.email
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        token,
+        expiresIn: "7d",
+        user: {
+          _id: user._id,
+          name: user.name,
+          role: user.role,
+        },
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    next(error);
   }
 };
 
-// Get Users (Admin Only)
-export const getUsers = async (req: Request, res: Response) => {
+// GET ALL USERS (ADMIN)
+export const getUsers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const users = await User.find().select("-password");
-    res.json(users);
+
+    res.status(200).json({
+      success: true,
+      data: users,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    next(error);
   }
 };
 
-// get me 
-export const getUser = async function (req, res) {
-    try{
-      const user = await User.findById(req.user.userId).select("-password");
-
-      if (!user) {
-          return res.status(404).json({
-            success: false,
-            message: "User not found",
-          });
-        }
-      return res.status(200).json({
-          success: true,
-          data: {
-            userId: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            lastLogin: user.lastLogin,
-          },
-        });
-    }catch (error) {
-      return res.status(500).json({
-        success: false,
-        message: "Server Error",
-      });
-    }
-}
-
-// user by Id
-export const getUserById = async function (req, res) {
-    try{
-      const { id } = req.params;
-      
-      const user = await User.findById(id).select("-password");
-
-      if(!user) return res.status(404).json({ success:false, msg:"User not Found"});
-
-      res.status(200).json({
-        success:true,
-        data: user
-      })
-    }catch(error){
-        res.status(500).json({msg:"Server error"})
-    }
-}
-
-// Update User 
-export const updateUser = async (req, res) => {
+// GET ME
+export const getUser = async (req: any, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const user = await User.findById(req.user.userId).select("-password");
 
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET USER BY ID
+export const getUserById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user = await User.findById(req.params.id).select("-password");
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// UPDATE USER
+export const updateUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
     const allowedUpdates = ["name", "role"];
-    const updates = {};
+    const updates: any = {};
 
     for (const key of allowedUpdates) {
       if (req.body[key] !== undefined) {
@@ -146,61 +181,52 @@ export const updateUser = async (req, res) => {
       }
     }
 
-    const user = await User.findByIdAndUpdate(
-      id,
-      updates,
-      { new: true, runValidators: true }
-    ).select("-password");
+    const user = await User.findByIdAndUpdate(req.params.id, updates, {
+      new: true,
+      runValidators: true,
+    }).select("-password");
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
+      return next(new AppError("User not found", 404));
     }
 
     res.status(200).json({
       success: true,
       message: "User updated",
-      data: user
+      data: user,
     });
-
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
+    next(error);
   }
 };
 
-// delete User by admin
-export const deleteUser = async (req, res) => {
+// DELETE USER
+export const deleteUser = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
 
     if (req.user.userId === id) {
-        return res.status(400).json({ message: "You cannot delete your own account" });
-      }
+      return next(new AppError("You cannot delete your own account", 400));
+    }
 
-    // const user = await User.findByIdAndDelete(id);
-    const user = await User.findByIdAndUpdate(id, { isDeleted: true });
+    const user = await User.findByIdAndUpdate(id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+    });
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
+      return next(new AppError("User not found", 404));
     }
 
     res.status(200).json({
       success: true,
-      message: "User deleted successfully"
+      message: "User deleted",
     });
-
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
+    next(error);
   }
 };

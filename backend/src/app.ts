@@ -8,6 +8,7 @@ import alertRoutes from "./routes/alert.routes";
 import { errorHandler } from "./middleware/error.middleware";
 import predictRoutes from './routes/predict.routes';
 import insightRoutes from "./routes/insight.routes";
+import path from "path";
 
 dotenv.config();
 
@@ -43,12 +44,36 @@ app.get("/api/v1/health", (req, res) => {
 });
 
 // ── Routes ────────────────────────────────────────────
-app.use("/api/v1", authRoutes);
+app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/cameras", cameraRoutes);
 app.use("/api/v1/crimes", crimeRoutes);
 app.use("/api/v1/alerts", alertRoutes);
 app.use("/api/v1", predictRoutes);
 app.use("/api/v1/insights", insightRoutes);
+
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads"))
+);
+
+
+app.use((err: any, req: any, res: any, next: any) => {
+  if (err instanceof Error && err.message.includes("Only video files")) {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+
+  if (err.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({
+      success: false,
+      message: "File too large",
+    });
+  }
+
+  next(err);
+});
 
 // ── 404 handler ───────────────────────────────────────
 app.use((req, res) => {
